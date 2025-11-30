@@ -1,10 +1,6 @@
 package bdda;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.BitSet;
@@ -14,16 +10,23 @@ public class DiskManager {
     private DBConfig config;
 
     /**
-     * Bitmap d'utilisation des pages :
+     * Bitmap d'utilisation des pages EN MÉMOIRE (cache) :
      * usedPages[fileIdx].get(pageIdx) == true  -> page utilisée (1)
      * usedPages[fileIdx].get(pageIdx) == false -> page libre (0)
      */
     private BitSet[] usedPages;
 
     /**
+     * Taille de la bitmap en bytes au début de chaque fichier Data.bin
+     * Permet de tracker jusqu'à 512 pages par fichier (64 bytes * 8 bits)
+     */
+    private static final int BITMAP_SIZE_BYTES = 64;
+    private static final int MAX_PAGES_PER_FILE = BITMAP_SIZE_BYTES * 8; // = 512 pages
+
+    /**
      * Constructeur du DiskManager.
      * Initialise le gestionnaire avec la configuration fournie et
-     * reconstruit les bitmaps à partir des fichiers de données et de dm.save.
+     * charge les bitmaps depuis les fichiers de données.
      * 
      * @param config configuration de la base de données contenant
      *               le chemin, la taille des pages et le nombre max de fichiers
@@ -63,43 +66,56 @@ public class DiskManager {
         for (int fileIdx = 0; fileIdx < maxFiles; fileIdx++) {
             File f = new File(config.getPath(), "Data" + fileIdx + ".bin");
             if (!f.exists()) {
-                continue; // pas de fichier, donc pas de pages ici
-            }
-
-            long length = f.length();
-            if (length <= 0) {
                 continue;
             }
 
-            int pageCount = (int) (length / pageSize);
+            long length = f.length();
+            if (length <= BITMAP_SIZE_BYTES) {
+                continue; // Fichier vide ou juste la bitmap
+            }
+
+            int pageCount = (int) ((length - BITMAP_SIZE_BYTES) / pageSize);
             BitSet bitmap = getOrCreateBitmap(fileIdx);
 
-            // Parcourir uniquement les pages existantes dans le fichier
+            // Parcourir les pages existantes
             for (int pageIdx = 0; pageIdx < pageCount; pageIdx++) {
                 if (!bitmap.get(pageIdx)) {   // false -> page libre
                     bitmap.set(pageIdx);      // devient utilisée (1)
+                    
+                    // Synchroniser avec le fichier
+                    writeBitmapToFile(f, bitmap);
+                    
                     return new PageId(fileIdx, pageIdx);
                 }
             }
         }
         
-        // 2) Aucune page libre : rajouter une nouvelle page à la fin d'un fichier
+        // 2) Aucune page libre : rajouter une nouvelle page
         for (int fileIdx = 0; fileIdx < maxFiles; fileIdx++) {
             File f = new File(config.getPath(), "Data" + fileIdx + ".bin");
+            
             if (!f.exists()) {
-                f.createNewFile();
+                createNewFileWithBitmap(f);
+            }
+
+            long length = f.length();
+            int pageIdx = (int) ((length - BITMAP_SIZE_BYTES) / pageSize);
+
+            // Vérifier qu'on ne dépasse pas la limite
+            if (pageIdx >= MAX_PAGES_PER_FILE) {
+                continue; // Fichier plein, essayer le suivant
             }
 
             try (RandomAccessFile raf = new RandomAccessFile(f, "rw")) {
-                long pageIdxLong = raf.length() / pageSize;
-                int pageIdx = (int) pageIdxLong;
-
-                // Écrit une page vide (remplie de zéros) pour réserver l'espace
+                // Écrit une page vide à la fin
                 raf.seek(raf.length());
                 raf.write(new byte[pageSize]);
 
                 BitSet bitmap = getOrCreateBitmap(fileIdx);
                 bitmap.set(pageIdx); // nouvelle page = utilisée
+
+                // Synchroniser avec le fichier
+                writeBitmapToFile(f, bitmap);
 
                 return new PageId(fileIdx, pageIdx);
             }
@@ -118,11 +134,14 @@ public class DiskManager {
      */
     public void DeallocPage(PageId pageId) throws IOException {
         File f = getFile(pageId);
-        // Vérifie que la page existe (lève une exception sinon)
+        // Vérifie que la page existe
         getOffset(pageId, f);
 
         BitSet bitmap = getOrCreateBitmap(pageId.getFileIdx());
         bitmap.clear(pageId.getPageIdx()); // 0 -> libre
+
+        // Synchroniser avec le fichier
+        writeBitmapToFile(f, bitmap);
     }
 
     /**
@@ -177,42 +196,19 @@ public class DiskManager {
 
     /**
      * Finalise le DiskManager à l'arrêt du SGBD.
-     * Sauvegarde la liste des pages libres dans un fichier au format CSV
-     * (fileIdx,pageIdx) pour permettre leur récupération au prochain démarrage.
+     * Synchronise toutes les bitmaps en mémoire vers les fichiers.
      * 
-     * @throws IOException si impossible d'écrire le fichier de sauvegarde
+     * @throws IOException si impossible d'écrire les bitmaps
      */
     public void finish() throws IOException {
-        File saveFile = new File(config.getPath(), "dm.save");
-        
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(saveFile))) {
-            int maxFiles = config.getMaxFileCount();
-            int pageSize = config.getPageSize();
+        int maxFiles = config.getMaxFileCount();
 
-            for (int fileIdx = 0; fileIdx < maxFiles; fileIdx++) {
+        // Sauvegarder toutes les bitmaps dans les fichiers
+        for (int fileIdx = 0; fileIdx < maxFiles; fileIdx++) {
+            if (usedPages[fileIdx] != null) {
                 File f = new File(config.getPath(), "Data" + fileIdx + ".bin");
-                if (!f.exists()) {
-                    continue;
-                }
-
-                long length = f.length();
-                if (length <= 0) {
-                    continue;
-                }
-
-                int pageCount = (int) (length / pageSize);
-                BitSet bitmap = usedPages[fileIdx];
-                if (bitmap == null) {
-                    bitmap = new BitSet();
-                    usedPages[fileIdx] = bitmap;
-                }
-
-                // On écrit UNIQUEMENT les pages libres (bit = 0)
-                for (int pageIdx = 0; pageIdx < pageCount; pageIdx++) {
-                    if (!bitmap.get(pageIdx)) {
-                        writer.write(fileIdx + "," + pageIdx);
-                        writer.newLine();
-                    }
+                if (f.exists()) {
+                    writeBitmapToFile(f, usedPages[fileIdx]);
                 }
             }
         }
@@ -220,79 +216,95 @@ public class DiskManager {
 
     /**
      * Initialise le DiskManager au démarrage du SGBD.
+     * Charge les bitmaps depuis les fichiers Data.bin existants.
      * 
-     * 1) Pour chaque fichier Data existant, on considère toutes ses pages comme utilisées.
-     * 2) Puis on lit dm.save (s'il existe) pour marquer certaines pages comme libres.
-     * 
-     * @throws IOException si erreur lors de la lecture du fichier de sauvegarde
+     * @throws IOException si erreur lors de la lecture des fichiers
      */
     public void Init() throws IOException {
         LoadState();
     }
 
     /**
-     * Charge l'état des pages (utilisées / libres) depuis les fichiers de données
-     * et le fichier dm.save.
-     * 
-     * dm.save contient une ligne par page libre : "fileIdx,pageIdx"
+     * Charge l'état des pages depuis les bitmaps stockées dans les fichiers Data.bin.
      */
     private void LoadState() throws IOException {
         int maxFiles = config.getMaxFileCount();
-        int pageSize = config.getPageSize();
 
-        // 1) Initialiser les bitmaps : toutes les pages existantes sont utilisées (bit = 1)
+        // Charger les bitmaps DEPUIS les fichiers
         for (int fileIdx = 0; fileIdx < maxFiles; fileIdx++) {
             File f = new File(config.getPath(), "Data" + fileIdx + ".bin");
-            BitSet bitmap = new BitSet();
-            usedPages[fileIdx] = bitmap;
-
+            
             if (!f.exists()) {
+                usedPages[fileIdx] = new BitSet();
                 continue;
             }
 
-            long length = f.length();
-            if (length <= 0) {
-                continue;
-            }
-
-            int pageCount = (int) (length / pageSize);
-            bitmap.set(0, pageCount); // toutes ces pages sont utilisées par défaut
+            // Lire la bitmap depuis le fichier
+            BitSet bitmap = readBitmapFromFile(f);
+            usedPages[fileIdx] = bitmap;
         }
+    }
 
-        // 2) Lire dm.save pour récupérer les pages libres (bit = 0)
-        File saveFile = new File(config.getPath(), "dm.save");
-        if (!saveFile.exists()) {
-            return;
+    /**
+     * Crée un nouveau fichier Data.bin avec une bitmap vide au début.
+     */
+    private void createNewFileWithBitmap(File f) throws IOException {
+        try (RandomAccessFile raf = new RandomAccessFile(f, "rw")) {
+            // Écrire bitmap vide (tous bits à 0 = toutes pages libres)
+            byte[] emptyBitmap = new byte[BITMAP_SIZE_BYTES];
+            raf.write(emptyBitmap);
         }
+    }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(saveFile))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                
-                if (parts.length == 2) {
-                    int fileIdx = Integer.parseInt(parts[0].trim());
-                    int pageIdx = Integer.parseInt(parts[1].trim());
-
-                    if (fileIdx < 0 || fileIdx >= maxFiles) {
-                        continue;
+    /**
+     * Lit la bitmap depuis le début d'un fichier Data.bin et la convertit en BitSet.
+     */
+    private BitSet readBitmapFromFile(File f) throws IOException {
+        BitSet bitmap = new BitSet();
+        
+        if (!f.exists() || f.length() < BITMAP_SIZE_BYTES) {
+            return bitmap;
+        }
+        
+        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+            raf.seek(0); // Début du fichier = bitmap
+            
+            byte[] bitmapBytes = new byte[BITMAP_SIZE_BYTES];
+            raf.readFully(bitmapBytes);
+            
+            // Convertir bytes en BitSet
+            for (int i = 0; i < bitmapBytes.length; i++) {
+                byte b = bitmapBytes[i];
+                for (int bit = 0; bit < 8; bit++) {
+                    if ((b & (1 << bit)) != 0) {
+                        bitmap.set(i * 8 + bit);
                     }
-
-                    File f = new File(config.getPath(), "Data" + fileIdx + ".bin");
-                    if (!f.exists()) {
-                        continue;
-                    }
-
-                    long length = f.length();
-                    int pageCount = (int) (length / pageSize);
-                    if (pageIdx < 0 || pageIdx >= pageCount) {
-                        continue; // entrée invalide, on ignore
-                    }
-
-                    BitSet bitmap = getOrCreateBitmap(fileIdx);
-                    bitmap.clear(pageIdx); // cette page devient libre (0)
                 }
             }
+        }
+        
+        return bitmap;
+    }
+
+    /**
+     * Écrit un BitSet dans le fichier Data.bin sous forme de bitmap.
+     */
+    private void writeBitmapToFile(File f, BitSet bitmap) throws IOException {
+        try (RandomAccessFile raf = new RandomAccessFile(f, "rw")) {
+            raf.seek(0); // Début du fichier
+            
+            byte[] bitmapBytes = new byte[BITMAP_SIZE_BYTES];
+            
+            // Convertir BitSet en bytes
+            for (int i = 0; i < MAX_PAGES_PER_FILE; i++) {
+                if (bitmap.get(i)) {
+                    int byteIndex = i / 8;
+                    int bitIndex = i % 8;
+                    bitmapBytes[byteIndex] |= (1 << bitIndex);
+                }
+            }
+            
+            raf.write(bitmapBytes);
         }
     }
 
@@ -316,6 +328,7 @@ public class DiskManager {
 
     /**
      * Calcule l'offset (position en octets) d'une page dans son fichier.
+     * Prend en compte la bitmap au début du fichier.
      * Vérifie que la page existe réellement dans le fichier.
      * 
      * @param pageId identifiant de la page
@@ -324,7 +337,8 @@ public class DiskManager {
      * @throws IOException si la page dépasse la taille actuelle du fichier
      */
     private long getOffset(PageId pageId, File f) throws IOException {
-        long offset = (long) pageId.getPageIdx() * config.getPageSize();
+        long offset = BITMAP_SIZE_BYTES + 
+                     (long) pageId.getPageIdx() * config.getPageSize();
 
         if (offset + config.getPageSize() > f.length()) {
             throw new IOException("Page " + pageId.getPageIdx() + 
