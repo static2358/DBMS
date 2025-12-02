@@ -207,6 +207,133 @@ public class Relation {
         
         bufferManager.FreePage(headerPageId, true);
     }
+
+    // ==================== DATA PAGE STRUCTURE ====================
+    
+    /**
+     * Structure d'une Data Page :
+     * 
+     * Offset 0-3   : prevPage.fileIdx
+     * Offset 4-7   : prevPage.pageIdx
+     * Offset 8-11  : nextPage.fileIdx
+     * Offset 12-15 : nextPage.pageIdx
+     * Offset 16... : Slots (records)
+     * Fin de page  : Bytemap
+     */
+    
+    /**
+     * Calcule l'offset d'un slot dans une page de données
+     */
+    private int getSlotOffset(int slotIdx) {
+        return DATA_PAGE_HEADER_SIZE + (slotIdx * getRecordSize());
+    }
+    
+    /**
+     * Calcule l'offset de la bytemap dans une page de données
+     */
+    private int getBytemapOffset() {
+        return DATA_PAGE_HEADER_SIZE + (slotCount * getRecordSize());
+    }
+    
+    /**
+     * Lit le prevPage d'une Data Page
+     */
+    private PageId getPrevPage(ByteBuffer bb) {
+        bb.position(0);
+        int fileIdx = bb.getInt();
+        int pageIdx = bb.getInt();
+        
+        if (fileIdx == INVALID_PAGE_ID) {
+            return null;
+        }
+        return new PageId(fileIdx, pageIdx);
+    }
+    
+    /**
+     * Lit le nextPage d'une Data Page
+     */
+    private PageId getNextPage(ByteBuffer bb) {
+        bb.position(8);
+        int fileIdx = bb.getInt();
+        int pageIdx = bb.getInt();
+        
+        if (fileIdx == INVALID_PAGE_ID) {
+            return null;
+        }
+        return new PageId(fileIdx, pageIdx);
+    }
+    
+    /**
+     * Écrit le prevPage dans une Data Page
+     */
+    private void setPrevPage(ByteBuffer bb, PageId pageId) {
+        bb.position(0);
+        if (pageId == null) {
+            bb.putInt(INVALID_PAGE_ID);
+            bb.putInt(INVALID_PAGE_ID);
+        } else {
+            bb.putInt(pageId.getFileIdx());
+            bb.putInt(pageId.getPageIdx());
+        }
+    }
+    
+    /**
+     * Écrit le nextPage dans une Data Page
+     */
+    private void setNextPage(ByteBuffer bb, PageId pageId) {
+        bb.position(8);
+        if (pageId == null) {
+            bb.putInt(INVALID_PAGE_ID);
+            bb.putInt(INVALID_PAGE_ID);
+        } else {
+            bb.putInt(pageId.getFileIdx());
+            bb.putInt(pageId.getPageIdx());
+        }
+    }
+    
+    /**
+     * Compte le nombre de slots occupés dans une page
+     */
+    private int countOccupiedSlots(ByteBuffer bb) {
+        int count = 0;
+        int bytemapOffset = getBytemapOffset();
+        
+        for (int i = 0; i < slotCount; i++) {
+            if (bb.get(bytemapOffset + i) == 1) {
+                count++;
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * Trouve le premier slot libre dans une page
+     * Retourne -1 si aucun slot libre
+     */
+    private int findFreeSlot(ByteBuffer bb) {
+        int bytemapOffset = getBytemapOffset();
+        
+        for (int i = 0; i < slotCount; i++) {
+            if (bb.get(bytemapOffset + i) == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    /**
+     * Vérifie si la page est pleine
+     */
+    private boolean isPageFull(ByteBuffer bb) {
+        return findFreeSlot(bb) == -1;
+    }
+    
+    /**
+     * Vérifie si la page est vide
+     */
+    private boolean isPageEmpty(ByteBuffer bb) {
+        return countOccupiedSlots(bb) == 0;
+    }
         
     /**
      * Écrit un record dans le buffer à la position donnée
