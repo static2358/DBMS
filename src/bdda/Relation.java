@@ -599,6 +599,39 @@ public class Relation {
         return records;
     }
 
+    // XXXXXXXXXXXXXXXXXXXXXXXX C6: GET ALL DATA PAGES XXXXXXXXXXXXXXXXXXXXXXXXXX
+    
+    /**
+     * Retourne la liste de toutes les pages de données
+     */
+    public List<PageId> getDataPages() throws IOException {
+        List<PageId> pages = new ArrayList<>();
+        
+        // Parcourir freePages
+        PageId current = getFreePagesHead();
+        while (current != null) {
+            pages.add(current);
+            
+            byte[] buffer = bufferManager.GetPage(current);
+            ByteBuffer bb = ByteBuffer.wrap(buffer);
+            current = getNextPage(bb);
+            bufferManager.FreePage(pages.get(pages.size() - 1), false);
+        }
+        
+        // Parcourir fullPages
+        current = getFullPagesHead();
+        while (current != null) {
+            pages.add(current);
+            
+            byte[] buffer = bufferManager.GetPage(current);
+            ByteBuffer bb = ByteBuffer.wrap(buffer);
+            current = getNextPage(bb);
+            bufferManager.FreePage(pages.get(pages.size() - 1), false);
+        }
+        
+        return pages;
+    }
+
         
     /**
      * Écrit un record dans le buffer à la position donnée
