@@ -376,6 +376,35 @@ public class Relation {
         // Mettre à jour la Header Page
         setFreePagesHead(newPageId);
     }
+
+    // XXXXXXXXXXXXXXXXXXXXXXXXXXXXX C3: GET FREE DATA PAGE XXXXXXXXXXXXXXXXXXXXXXXX
+    
+    /**
+     * Retourne une page avec de l'espace libre
+     * Retourne null si aucune page disponible
+     */
+    public PageId getFreeDataPageId(int sizeRecord) throws IOException {
+        PageId current = getFreePagesHead();
+        
+        while (current != null) {
+            byte[] buffer = bufferManager.GetPage(current);
+            ByteBuffer bb = ByteBuffer.wrap(buffer);
+            
+            // Vérifier s'il y a un slot libre
+            if (!isPageFull(bb)) {
+                bufferManager.FreePage(current, false);
+                return current;
+            }
+            
+            // Passer à la page suivante
+            PageId next = getNextPage(bb);
+            bufferManager.FreePage(current, false);
+            current = next;
+        }
+        
+        return null;
+    }
+
         
     /**
      * Écrit un record dans le buffer à la position donnée
