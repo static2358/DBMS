@@ -571,6 +571,34 @@ public class Relation {
         setFullPagesHead(pageId);
     }
 
+    // XXXXXXXXXXXXXXXXXXXXXX C5: GET RECORDS IN DATA PAGE XXXXXXXXXXXXXXXXXXXXXXXXXX
+    
+    /**
+     * Retourne tous les records d'une page de données
+     */
+    public List<Record> getRecordsInDataPage(PageId pageId) throws IOException {
+        List<Record> records = new ArrayList<>();
+        
+        byte[] buffer = bufferManager.GetPage(pageId);
+        ByteBuffer bb = ByteBuffer.wrap(buffer);
+        
+        int bytemapOffset = getBytemapOffset();
+        
+        for (int i = 0; i < slotCount; i++) {
+            // Vérifier si le slot est occupé
+            if (bb.get(bytemapOffset + i) == 1) {
+                Record record = new Record();
+                int slotOffset = getSlotOffset(i);
+                readFromBuffer(record, bb, slotOffset);
+                records.add(record);
+            }
+        }
+        
+        bufferManager.FreePage(pageId, false);
+        
+        return records;
+    }
+
         
     /**
      * Écrit un record dans le buffer à la position donnée
