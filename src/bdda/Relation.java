@@ -76,7 +76,15 @@ public class Relation {
     public ColumnInfo getColumn(int index) {
         return columns.get(index);
     }
+
+    public PageId getHeaderPageId() {
+        return headerPageId;
+    }
     
+    public int getSlotCount() {
+        return slotCount;
+    }
+
     /**
      * Calcule la taille totale d'un record en bytes
      * @return taille en bytes
@@ -87,6 +95,39 @@ public class Relation {
             size += col.getSizeInBytes();
         }
         return size;
+    }
+
+    private int calculateSlotCount() {
+        int pageSize = diskManager.getConfig().getPageSize();
+        int recordSize = getRecordSize();
+        
+        // Espace disponible = pageSize - header (prevPage + nextPage)
+        int availableSpace = pageSize - DATA_PAGE_HEADER_SIZE;
+        
+        // Chaque slot = 1 record + 1 byte pour la bytemap
+        int bytesPerSlot = recordSize + 1;
+        
+        return availableSpace / bytesPerSlot;
+    }
+
+    // ==================== HEADER PAGE ====================
+    
+    /**
+     * Initialise la Header Page avec des listes vides
+     */
+    private void initHeaderPage() throws IOException {
+        byte[] buffer = bufferManager.GetPage(headerPageId);
+        ByteBuffer bb = ByteBuffer.wrap(buffer);
+        
+        // fullPages = (-1, -1) -> liste vide
+        bb.putInt(INVALID_PAGE_ID);
+        bb.putInt(INVALID_PAGE_ID);
+        
+        // freePages = (-1, -1) -> liste vide
+        bb.putInt(INVALID_PAGE_ID);
+        bb.putInt(INVALID_PAGE_ID);
+        
+        bufferManager.FreePage(headerPageId, true);
     }
         
     /**
