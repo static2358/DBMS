@@ -1,45 +1,63 @@
 package bdda;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Représente une relation (table) avec son schéma
- * Gère l'écriture et la lecture des records dans les buffers
+ * Représente une relation (table) avec son schéma et son Heap File
  */
 public class Relation {
     
     private String name;
     private List<ColumnInfo> columns;
     
+    // TP5 : Nouveaux attributs
+    private PageId headerPageId;
+    private int slotCount;  // Nombre de slots par page de données
+    private DiskManager diskManager;
+    private BufferManager bufferManager;
+    
+    // Constantes pour la structure des pages
+    private static final int HEADER_PAGE_SIZE = 16;  // 2 PageId = 4 * 4 bytes
+    private static final int DATA_PAGE_HEADER_SIZE = 16;  // prevPage + nextPage
+    
+    // PageId factice pour indiquer "fin de liste"
+    private static final int INVALID_PAGE_ID = -1;
+    
     /**
-     * Constructeur avec liste de ColumnInfo
-     * @param name nom de la relation
-     * @param columns liste des colonnes
+     * Constructeur pour créer une nouvelle relation
      */
-    public Relation(String name, List<ColumnInfo> columns) {
+    public Relation(String name, List<ColumnInfo> columns, 
+                    DiskManager diskManager, BufferManager bufferManager) throws IOException {
         this.name = name;
         this.columns = new ArrayList<>(columns);
+        this.diskManager = diskManager;
+        this.bufferManager = bufferManager;
+        
+        // Calculer le nombre de slots par page
+        this.slotCount = calculateSlotCount();
+        
+        // Allouer la Header Page
+        this.headerPageId = diskManager.allocPage();
+        
+        // Initialiser la Header Page (listes vides)
+        initHeaderPage();
     }
     
     /**
-     * Constructeur avec listes séparées de noms et types
-     * @param name nom de la relation
-     * @param columnNames liste des noms de colonnes
-     * @param columnTypes liste des types de colonnes
+     * Constructeur pour charger une relation existante
      */
-    public Relation(String name, List<String> columnNames, List<String> columnTypes) {
+    public Relation(String name, List<ColumnInfo> columns,
+                    PageId headerPageId,
+                    DiskManager diskManager, BufferManager bufferManager) {
         this.name = name;
-        this.columns = new ArrayList<>();
-        
-        if (columnNames.size() != columnTypes.size()) {
-            throw new IllegalArgumentException("Le nombre de noms et de types doit être identique");
-        }
-        
-        for (int i = 0; i < columnNames.size(); i++) {
-            columns.add(new ColumnInfo(columnNames.get(i), columnTypes.get(i)));
-        }
+        this.columns = new ArrayList<>(columns);
+        this.headerPageId = headerPageId;
+        this.diskManager = diskManager;
+        this.bufferManager = bufferManager;
+        this.slotCount = calculateSlotCount();
     }
     
     
