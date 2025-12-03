@@ -94,5 +94,59 @@ public class SGBD {
         }
     }
     
+    /**
+     * Traite la commande CREATE TABLE
+     * Format : CREATE TABLE NomTable (Col1:Type1,Col2:Type2,...)
+     * Exemple : CREATE TABLE R (X:INT,C3:FLOAT,BLA:CHAR(10))
+     */
+    private void ProcessCreateTableCommand(String command) throws IOException {
+        // Enlever "CREATE TABLE "
+        String rest = command.substring(13);
+        
+        // Trouver la position de la parenthese ouvrante
+        int parenPos = rest.indexOf('(');
+        if (parenPos == -1) {
+            System.out.println("Erreur de syntaxe : parenthese manquante");
+            return;
+        }
+        
+        // Extraire le nom de la table
+        String tableName = rest.substring(0, parenPos).trim();
+        
+        // Extraire la definition des colonnes (entre parentheses)
+        String colsDef = rest.substring(parenPos + 1, rest.length() - 1);
+        
+        // Parser les colonnes
+        List<ColumnInfo> columns = parseColumns(colsDef);
+        
+        // Creer la relation
+        Relation relation = new Relation(tableName, columns, diskManager, bufferManager);
+        
+        // Ajouter au DBManager
+        dbManager.AddTable(relation);
+    }
+    
+    /**
+     * Parse la definition des colonnes
+     * Format : Col1:Type1,Col2:Type2,...
+     */
+    private List<ColumnInfo> parseColumns(String colsDef) {
+        List<ColumnInfo> columns = new ArrayList<>();
+        
+        // Separer par virgule
+        String[] colsArray = colsDef.split(",");
+        
+        for (String colDef : colsArray) {
+            // Separer nom:type
+            String[] parts = colDef.split(":");
+            String colName = parts[0].trim();
+            String colType = parts[1].trim();
+            
+            columns.add(new ColumnInfo(colName, colType));
+        }
+        
+        return columns;
+    }
+    
     
 }
