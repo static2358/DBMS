@@ -195,5 +195,77 @@ public class DBManager {
         }
     }
     
-   
+    /**
+     * Charge l'etat de la base de donnees
+     */
+    public void LoadState() throws IOException {
+        String savePath = config.getPath() + File.separator + SAVE_FILE;
+        File saveFile = new File(savePath);
+        
+        // Si le fichier n'existe pas, rien a charger
+        if (!saveFile.exists()) {
+            return;
+        }
+        
+        try (DataInputStream dis = new DataInputStream(new FileInputStream(savePath))) {
+            // Nombre de tables
+            int nbTables = dis.readInt();
+            
+            // Pour chaque table
+            for (int i = 0; i < nbTables; i++) {
+                // Nom de la table
+                String name = dis.readUTF();
+                
+                // HeaderPageId
+                int fileIdx = dis.readInt();
+                int pageIdx = dis.readInt();
+                PageId headerPageId = new PageId(fileIdx, pageIdx);
+                
+                // Colonnes
+                int nbColumns = dis.readInt();
+                List<ColumnInfo> columns = new ArrayList<>();
+                
+                for (int j = 0; j < nbColumns; j++) {
+                    String colName = dis.readUTF();
+                    String colType = dis.readUTF();
+                    columns.add(new ColumnInfo(colName, colType));
+                }
+                
+                // Recreer la relation avec le constructeur pour relation existante
+                Relation table = new Relation(name, columns, headerPageId, diskManager, bufferManager);
+                tables.put(name, table);
+            }
+        }
+    }
+    
+    /**
+     * Retourne la liste des noms de toutes les tables
+     */
+    public List<String> GetTableNames() {
+        return new ArrayList<>(tables.keySet());
+    }
+    
+    /**
+     * Verifie si une table existe
+     */
+    public boolean TableExists(String nomTable) {
+        return tables.containsKey(nomTable);
+    }
+    
+    /**
+     * Retourne le nombre de tables
+     */
+    public int GetTableCount() {
+        return tables.size();
+    }
+    
+    /**
+     * Termine proprement le DBManager
+     * Sauvegarde l'etat et ferme les ressources
+     */
+    public void Finish() throws IOException {
+        SaveState();
+        bufferManager.FlushBuffers();
+        diskManager.finish();
+    }
 }
