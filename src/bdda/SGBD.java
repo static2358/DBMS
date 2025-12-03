@@ -148,5 +148,89 @@ public class SGBD {
         return columns;
     }
     
+    /**
+     * Traite la commande DROP TABLE
+     * Format : DROP TABLE NomTable
+     */
+    private void ProcessDropTableCommand(String command) throws IOException {
+        // Enlever "DROP TABLE "
+        String tableName = command.substring(11).trim();
+        
+        // Supprimer la table
+        dbManager.RemoveTable(tableName);
+    }
     
+    /**
+     * Traite la commande DROP TABLES
+     * Supprime toutes les tables
+     */
+    private void ProcessDropTablesCommand(String command) throws IOException {
+        dbManager.RemoveAllTables();
+    }
+    
+    /**
+     * Traite la commande DESCRIBE TABLE
+     * Format : DESCRIBE TABLE NomTable
+     */
+    private void ProcessDescribeTableCommand(String command) {
+        // Enlever "DESCRIBE TABLE "
+        String tableName = command.substring(15).trim();
+        
+        // Afficher le schema
+        dbManager.DescribeTable(tableName);
+    }
+    
+    /**
+     * Traite la commande DESCRIBE TABLES
+     * Affiche toutes les tables
+     */
+    private void ProcessDescribeTablesCommand(String command) {
+        dbManager.DescribeAllTables();
+    }
+    
+    /**
+     * Traite la commande EXIT
+     * Sauvegarde et quitte
+     */
+    private void ProcessExitCommand(String command) throws IOException {
+        // Sauvegarder l'etat
+        dbManager.SaveState();
+        
+        // Flush les buffers
+        bufferManager.FlushBuffers();
+        
+        // Fermer le DiskManager
+        diskManager.finish();
+        
+        // Arreter la boucle
+        running = false;
+    }
+    
+    /**
+     * Point d'entree de l'application
+     * @param args args[0] = chemin vers le fichier de configuration
+     */
+    public static void main(String[] args) {
+        // Verifier les arguments
+        if (args.length < 1) {
+            System.err.println("Usage: java SGBD <chemin_config>");
+            System.err.println("Exemple: java SGBD config/config.txt");
+            System.exit(1);
+        }
+        
+        try {
+            // Charger la configuration
+            File configFile = new File(args[0]);
+            DBConfig config = DBConfig.LoadDBConfig(configFile);
+            
+            // Creer et lancer le SGBD
+            SGBD sgbd = new SGBD(config);
+            sgbd.Run();
+            
+        } catch (Exception e) {
+            System.err.println("Erreur fatale : " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
 }
