@@ -50,6 +50,10 @@ public class SGBD {
         this.dbManager = new DBManager(config, diskManager, bufferManager);
         this.running = true;
     }
+
+    public DBConfig getConfig() {
+        return this.config;
+    }
     
     /**
      * Boucle principale de traitement des commandes
