@@ -22,4 +22,36 @@ public class ProjectOperator implements IRecordIterator {
         this.columnIndices = columnIndices;
     }
 
+    @Override
+    public Record GetNextRecord() throws IOException {
+        Record record = childIterator.GetNextRecord();
+        
+        if (record == null) {
+            return null;
+        }
+        
+        // Si pas de projection specifique, retourner tout
+        if (columnIndices == null) {
+            return record;
+        }
+        
+        // Creer un nouveau record avec seulement les colonnes demandees
+        List<Object> projectedValues = new ArrayList<>();
+        for (int idx : columnIndices) {
+            projectedValues.add(record.getValue(idx));
+        }
+        
+        return new Record(projectedValues);
+    }
+    
+    @Override
+    public void Close() {
+        childIterator.Close();
+    }
+    
+    @Override
+    public void Reset() throws IOException {
+        childIterator.Reset();
+    }
+
 }
