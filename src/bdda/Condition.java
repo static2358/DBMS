@@ -45,4 +45,46 @@ public class Condition {
         this.rightColIndex = rightColIndex;
         this.rightConstant = rightConstant;
     }
+
+    /**
+     * Evalue la condition sur un record
+     * @param record le record a evaluer
+     * @param columns les colonnes de la relation (pour connaitre les types)
+     * @return true si la condition est satisfaite
+     */
+    public boolean evaluate(Record record, List<ColumnInfo> columns) {
+        // Recuperer la valeur gauche
+        Object leftValue;
+        ColumnInfo leftCol = null;
+        if (leftColIndex >= 0) {
+            leftValue = record.getValue(leftColIndex);
+            leftCol = columns.get(leftColIndex);
+        } else {
+            leftValue = leftConstant;
+        }
+        
+        // Recuperer la valeur droite
+        Object rightValue;
+        ColumnInfo rightCol = null;
+        if (rightColIndex >= 0) {
+            rightValue = record.getValue(rightColIndex);
+            rightCol = columns.get(rightColIndex);
+        } else {
+            rightValue = rightConstant;
+        }
+        
+        // Determiner le type pour la comparaison
+        ColumnInfo refCol;
+
+        if (leftCol != null) {
+            refCol = leftCol;
+        } else {
+            refCol = rightCol;
+        }
+        
+        // Comparer selon le type
+        return compare(leftValue, rightValue, refCol);
+    }
+
+    
 }
