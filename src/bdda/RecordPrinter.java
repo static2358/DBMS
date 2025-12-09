@@ -46,7 +46,6 @@ public class RecordPrinter {
             }
         }
         
-        sb.append(".");
         System.out.println(sb.toString());
     }
     
