@@ -1,7 +1,12 @@
-package bdda;
+package bdda.tests;
 
 import java.io.File;
 import java.io.IOException;
+
+import bdda.core.BufferManager;
+import bdda.core.DBConfig;
+import bdda.core.DiskManager;
+import bdda.core.PageId;
 
 public class BufferManagerTests {
 

@@ -1,7 +1,9 @@
-package bdda;
+package bdda.tests;
 
 import java.io.File;
 import java.io.IOException;
+
+import bdda.core.*;
 
 /**
  * Classe de test pour DBConfig

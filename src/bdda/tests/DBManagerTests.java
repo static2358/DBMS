@@ -1,8 +1,14 @@
-package bdda;
+package bdda.tests;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+
+import bdda.core.DBConfig;
+import bdda.manager.DBManager;
+import bdda.storage.ColumnInfo;
+import bdda.storage.Record;
+import bdda.storage.Relation;
 
 public class DBManagerTests {
     

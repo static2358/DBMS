@@ -1,4 +1,4 @@
-package bdda;
+package bdda.storage;
 
 /**
  * Représente une colonne d'une relation (nom + type)

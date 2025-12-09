@@ -1,10 +1,17 @@
-package bdda;
+package bdda.manager;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import bdda.core.BufferManager;
+import bdda.core.DBConfig;
+import bdda.core.DiskManager;
+import bdda.core.PageId;
+import bdda.storage.ColumnInfo;
+import bdda.storage.Relation;
 
 /**
  * Gestionnaire de la base de donnees

@@ -1,8 +1,13 @@
-package bdda;
+package bdda.query;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+
+import bdda.core.BufferManager;
+import bdda.core.PageId;
+import bdda.storage.Record;
+import bdda.storage.Relation;
 
 /**
  * Iterateur qui parcourt tous les records d'une relation

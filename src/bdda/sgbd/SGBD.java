@@ -1,4 +1,4 @@
-package bdda;
+package bdda.sgbd;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -7,6 +7,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+
+import bdda.core.BufferManager;
+import bdda.core.DBConfig;
+import bdda.core.DiskManager;
+import bdda.core.PageId;
+import bdda.manager.DBManager;
+import bdda.query.Condition;
+import bdda.query.IRecordIterator;
+import bdda.query.ProjectOperator;
+import bdda.query.RecordPrinter;
+import bdda.query.RelationScanner;
+import bdda.query.SelectOperator;
+import bdda.storage.ColumnInfo;
+import bdda.storage.Record;
+import bdda.storage.RecordId;
+import bdda.storage.Relation;
 
 /**
  * Classe principale du SGBD

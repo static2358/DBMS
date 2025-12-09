@@ -1,8 +1,10 @@
-package bdda;
+package bdda.query;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import bdda.storage.Record;
 
 /**
  * Operateur de projection (selectionne certaines colonnes)

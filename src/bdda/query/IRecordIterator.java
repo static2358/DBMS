@@ -1,6 +1,8 @@
-package bdda;
+package bdda.query;
 
 import java.io.IOException;
+
+import bdda.storage.Record;
 
 /**
  * Interface pour parcourir un ensemble de records

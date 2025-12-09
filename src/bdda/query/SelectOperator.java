@@ -1,7 +1,10 @@
-package bdda;
+package bdda.query;
 
 import java.io.IOException;
 import java.util.List;
+
+import bdda.storage.ColumnInfo;
+import bdda.storage.Record;
 
 /**
  * Operateur de selection (filtre les records selon des conditions)

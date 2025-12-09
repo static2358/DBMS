@@ -1,12 +1,12 @@
-package bdda;
+package bdda.core;
 
 public class Frame {
 
     PageId pageId;
     byte[] buffer;
     boolean dirty;
-    int pinCount;
-    long lastAccess;
+    public int pinCount;
+    public long lastAccess;
 
     Frame(int pageSize) {
         this.pageId = null;

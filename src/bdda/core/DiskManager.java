@@ -1,4 +1,4 @@
-package bdda;
+package bdda.core;
 
 import java.io.File;
 import java.io.IOException;

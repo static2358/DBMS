@@ -1,9 +1,13 @@
-package bdda;
+package bdda.storage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
+import bdda.core.BufferManager;
+import bdda.core.DiskManager;
+import bdda.core.PageId;
 
 /**
  * Représente une relation (table) avec son schéma et son Heap File

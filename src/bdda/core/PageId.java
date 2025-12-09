@@ -1,4 +1,4 @@
-package bdda;
+package bdda.core;
 
 public class PageId {
 

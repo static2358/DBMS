@@ -1,4 +1,6 @@
-package bdda;
+package bdda.storage;
+
+import bdda.core.PageId;
 
 /**
  * Identifiant unique d'un record dans la base de données

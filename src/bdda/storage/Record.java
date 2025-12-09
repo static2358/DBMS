@@ -1,4 +1,4 @@
-package bdda;
+package bdda.storage;
 
 import java.util.List;
 import java.util.ArrayList;

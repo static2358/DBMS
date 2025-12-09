@@ -1,8 +1,17 @@
-package bdda;
+package bdda.tests;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+
+import bdda.core.BufferManager;
+import bdda.core.DBConfig;
+import bdda.core.DiskManager;
+import bdda.core.PageId;
+import bdda.storage.ColumnInfo;
+import bdda.storage.Record;
+import bdda.storage.RecordId;
+import bdda.storage.Relation;
 
 public class RelationTests {
     

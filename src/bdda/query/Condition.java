@@ -1,6 +1,9 @@
-package bdda;
+package bdda.query;
 
 import java.util.List;
+
+import bdda.storage.ColumnInfo;
+import bdda.storage.Record;
 
 /**
  * Represente une condition dans une clause WHERE

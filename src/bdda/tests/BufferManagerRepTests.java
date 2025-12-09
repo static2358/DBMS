@@ -1,8 +1,11 @@
-package bdda;
+package bdda.tests;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+
+import bdda.core.*;
+
 
 public class BufferManagerRepTests {
 

@@ -1,7 +1,11 @@
-package bdda;
+package bdda.tests;
 
 import java.io.File;
 import java.io.IOException;
+
+import bdda.core.DBConfig;
+import bdda.core.DiskManager;
+import bdda.core.PageId;
 
 /**
  * Classe de test complète pour DiskManager avec bitmap dans les fichiers
