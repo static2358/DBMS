@@ -1,7 +1,7 @@
 # Fichier de configuration de la base de données
 # Ceci est un commentaire
 
-# Chemin de la base de données - ligne importante !
+# Chemin de la base de données / ligne importante !
 dbpath = 'BinData/'
 
 # Autres configurations
