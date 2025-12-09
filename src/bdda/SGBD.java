@@ -220,6 +220,100 @@ public class SGBD {
         // Arreter la boucle
         running = false;
     }
+
+    private void ProcessInsertCommand(String command) throws IOException {
+        // Enlever "INSERT INTO "
+        String rest = command.substring(12);
+        
+        // Trouver " VALUES "
+        int valuesPos = rest.indexOf(" VALUES ");
+        String tableName = rest.substring(0, valuesPos).trim();
+        
+        // Extraire les valeurs (entre parentheses)
+        String valuesPart = rest.substring(valuesPos + 8).trim();
+        String valuesStr = valuesPart.substring(1, valuesPart.length() - 1);
+        
+        // Recuperer la relation
+        Relation relation = dbManager.GetTable(tableName);
+        if (relation == null) {
+            System.out.println("Table inexistante : " + tableName);
+            return;
+        }
+        
+        // Parser les valeurs
+        List<Object> values = parseValues(valuesStr, relation.getColumns());
+        
+        // Inserer le record
+        Record record = new Record(values);
+        relation.InsertRecord(record);
+    }
+
+    /**
+     * Parse les valeurs d'un INSERT ou CSV
+     */
+    private List<Object> parseValues(String valuesStr, List<ColumnInfo> columns) {
+        List<Object> values = new ArrayList<>();
+        List<String> tokens = splitValues(valuesStr);
+        
+        for (int i = 0; i < tokens.size() && i < columns.size(); i++) {
+            String token = tokens.get(i).trim();
+            ColumnInfo col = columns.get(i);
+            
+            Object value = parseValue(token, col);
+            values.add(value);
+        }
+        
+        return values;
+    }
+
+    /**
+     * Split les valeurs en tenant compte des guillemets
+     */
+    private List<String> splitValues(String valuesStr) {
+        List<String> tokens = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        
+        for (int i = 0; i < valuesStr.length(); i++) {
+            char c = valuesStr.charAt(i);
+            
+            if (c == '"') {
+                inQuotes = !inQuotes;
+                current.append(c);
+            } else if (c == ',' && !inQuotes) {
+                tokens.add(current.toString());
+                current = new StringBuilder();
+            } else {
+                current.append(c);
+            }
+        }
+        
+        if (current.length() > 0) {
+            tokens.add(current.toString());
+        }
+        
+        return tokens;
+    }
+
+    /**
+     * Parse une valeur selon son type
+     */
+    private Object parseValue(String token, ColumnInfo col) {
+        token = token.trim();
+        
+        // Enlever les guillemets si present
+        if (token.startsWith("\"") && token.endsWith("\"")) {
+            token = token.substring(1, token.length() - 1);
+        }
+        
+        if (col.isInt()) {
+            return Integer.parseInt(token);
+        } else if (col.isFloat()) {
+            return Float.parseFloat(token);
+        } else {
+            return token;
+        }
+    }
     
     /**
      * Point d'entree de l'application
