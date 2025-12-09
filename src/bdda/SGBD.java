@@ -1,6 +1,8 @@
 package bdda;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -312,6 +314,50 @@ public class SGBD {
             return Float.parseFloat(token);
         } else {
             return token;
+        }
+    }
+
+    /**
+     * Traite la commande APPEND INTO
+     * Format : APPEND INTO nomRelation ALLRECORDS (nomFichier.csv)
+     */
+    private void ProcessAppendCommand(String command) throws IOException {
+        // Enlever "APPEND INTO "
+        String rest = command.substring(12);
+        
+        // Trouver " ALLRECORDS "
+        int allrecordsPos = rest.indexOf(" ALLRECORDS ");
+        String tableName = rest.substring(0, allrecordsPos).trim();
+        
+        // Extraire le nom du fichier (entre parentheses)
+        String filePart = rest.substring(allrecordsPos + 12).trim();
+        String fileName = filePart.substring(1, filePart.length() - 1);
+        
+        // Recuperer la relation
+        Relation relation = dbManager.GetTable(tableName);
+        if (relation == null) {
+            System.out.println("Table inexistante : " + tableName);
+            return;
+        }
+        
+        // Lire le fichier CSV
+        File csvFile = new File(fileName);
+        if (!csvFile.exists()) {
+            System.out.println("Fichier inexistant : " + fileName);
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                
+                List<Object> values = parseValues(line, relation.getColumns());
+                Record record = new Record(values);
+                relation.InsertRecord(record);
+            }
         }
     }
     
