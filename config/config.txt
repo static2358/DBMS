@@ -2,7 +2,7 @@
 # Ceci est un commentaire
 
 # Chemin de la base de données / ligne importante !
-dbpath = 'DBScen3/'
+dbpath = 'DataBin/'
 
 # Autres configurations
 pagesize = 4096
