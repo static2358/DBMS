@@ -2,10 +2,10 @@
 # Ceci est un commentaire
 
 # Chemin de la base de données / ligne importante !
-dbpath = 'BinData/'
+dbpath = 'DBScen3/'
 
 # Autres configurations
-pagesize = 64
+pagesize = 4096
 dm_maxfilecount = 20
 bm_policy = 'LRU'
-bm_buffercount = 1
+bm_buffercount = 10

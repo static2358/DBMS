@@ -216,11 +216,18 @@ public class DiskManager {
 
     /**
      * Initialise le DiskManager au démarrage du SGBD.
-     * Charge les bitmaps depuis les fichiers Data.bin existants.
+     * Crée le répertoire de données s'il n'existe pas et charge les bitmaps.
      * 
      * @throws IOException si erreur lors de la lecture des fichiers
      */
     public void Init() throws IOException {
+        // Créer le répertoire de données s'il n'existe pas
+        File dbDir = new File(config.getPath());
+        if (!dbDir.exists()) {
+            if (!dbDir.mkdirs()) {
+                throw new IOException("Impossible de créer le répertoire de données : " + config.getPath());
+            }
+        }
         LoadState();
     }
 
